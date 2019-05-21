@@ -1,6 +1,4 @@
 # Libraries: --------------------------------------------------------------
-
-
 pacman::p_load(RMySQL, dplyr, lubridate, ggplot2, readr, plotly, ggfortify, forecast, padr, DescTools, stats, xts)
 ###############################################################################
 # Github setup ------------------------------------------------------------
@@ -306,18 +304,27 @@ random <- components070809_GAP$time.series[,3]
 
 plot(seasonal)
 ###############################################################################
-# Holt-Winters: -----------------------------------------------------------
+# Splitting data ----------------------------------------------------------
+train_set <- window(tsGAP_070809, start = 2007, end = c(2008,53))
+test_set <- window(tsGAP_070809, start = 2009)
 
-#GAP:
+###############################################################################
+# MODELS: -----------------------------------------------------------
+
+#Holt-Winters:
 
 # Seasonal adjusting sub-meter 1 by subtracting the seasonal component & plot:
-tsGAP_070809Adjusted <- tsGAP_070809 
+tsGAP_070809Adjusted <- tsGAP_070809 - seasonal
 autoplot(tsGAP_070809Adjusted)
 
-# Holt Winters Exponential Smoothing & Plot:
-ts_GAP_HW070809 <- HoltWinters(tsGAP_070809Adjusted,  beta = FALSE,
-                                  gamma = TRUE)
-plot(ts_GAP_HW070809)
+# Train and test sets:
+train_tsGAP_070809Adjusted <- window(tsGAP_070809Adjusted, end = c(2008,53))
+test_tsGAP_070809Adjusted <- window(tsGAP_070809Adjusted, start = 2009)
+
+HWMODEL <- HoltWinters(train_tsGAP_070809Adjusted,beta = FALSE,gamma = FALSE)
+HW_forecast <- forecast(HWMODEL,h = 53)
+
+holtacc <- accuracy(HW_forecast,test_tsGAP_070809Adjusted)
 
 # HoltWinters forecast & plot:
 ts_GAP_HW070809for <- forecast(ts_GAP_HW070809, h = 25)
@@ -331,4 +338,28 @@ plot(ts_GAP_HW070809forC, ylab= "Watt-Hours", xlab="Time - GAP", start(2010))
 
 # Absolute error:
 absolute_error_HW <- sum(abs(random))/length(random)
+
+
+
+# AUTOARIMA:
+
+arimafit <- auto.arima(train_set)
+arimaforecast2009 <- forecast(arimafit,h = 53)
+arimaacc <- accuracy(f = arimaforecast2009,test_set)
+plot(arimaforecast2009)
+
+#CrossValidation for other models:
+crossvalidation <- c()
+vector <- c(meanf,rwf,naive)
+accuracycv <- NULL
+for (i in vector) {
+  crossvalidation <- tsCV(y = tsGAP_070809,h = 53,forecastfunction = i)
+  accuracycv <- rbind(accuracycv,accuracy(crossvalidation,tsGAP_070809))
+}
+rownames(accuracycv) <- c("meanf","rwf","naive")
+accuracycv
+arimaacc
+holtacc
+
+
 
