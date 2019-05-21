@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1558347713635.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "58CF793F",
+    "lastKnownWriteTime" : 7020389732780679275,
+    "last_content_update" : 1558347713635,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "DE6119EE",
+        "caption" : "house070809week",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=house070809week&cache_key=DE6119EE",
+        "displayedObservations" : "1307",
+        "environment" : "",
+        "object" : "house070809week",
+        "preview" : "0",
+        "totalObservations" : "1307",
+        "variables" : "6"
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}
