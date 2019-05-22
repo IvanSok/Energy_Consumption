@@ -1,5 +1,6 @@
 # Libraries: --------------------------------------------------------------
-pacman::p_load(RMySQL, dplyr, lubridate, ggplot2, readr, plotly, ggfortify, forecast, padr, DescTools, stats, xts)
+pacman::p_load(RMySQL, dplyr, lubridate, ggplot2, readr, plotly, ggfortify, forecast, padr, DescTools,
+               stats, xts, prophet)
 ###############################################################################
 # Github setup ------------------------------------------------------------
 current_path <- getActiveDocumentContext()$path
@@ -271,6 +272,12 @@ house070809week <- newDF %>% group_by(year,week) %>% summarise(Kitchen = sum(Kit
                                                                WH_AC = sum(WaterHeater_AirConditioner),
                                                                GAP = sum(Global_active_power))
 
+house070809day <- newDF %>% group_by(Date) %>% summarise(GAP = sum(Global_active_power))
+
+names(house070809day)[1] <- "ds"
+names(house070809day)[2] <- "y"
+house070809day$ds <- as.Date.character(house070809day$ds)
+
 ###############################################################################
 # Creating Time series & decomposition: -----------------------------------
 
@@ -342,12 +349,24 @@ absolute_error_HW <- sum(abs(random))/length(random)
 
 
 # AUTOARIMA:
-
 arimafit <- auto.arima(train_set)
 arimaforecast2009 <- forecast(arimafit,h = 53)
 arimaacc <- accuracy(f = arimaforecast2009,test_set)
 plot(arimaforecast2009)
 
+
+# PROPHET:
+prophet <- prophet(house070809day, daily.seasonality = TRUE)
+future <- make_future_dataframe(prophet, periods = 365)
+forecast <- predict(prophet, future)
+plot(prophet, forecast, pch = 24, cex = 3)
+prophet_plot_components(prophet, forecast)
+
+prophet.cv <- cross_validation(prophet, initial = 730, period = 180, horizon = 365, units = 'days')
+head(prophet.cv)
+prophet.perf <- performance_metrics(prophet.cv)
+mean(prophet.perf$mape)
+prophet.perf
 #CrossValidation for other models:
 crossvalidation <- c()
 vector <- c(meanf,rwf,naive)
@@ -357,6 +376,7 @@ for (i in vector) {
   accuracycv <- rbind(accuracycv,accuracy(crossvalidation,tsGAP_070809))
 }
 rownames(accuracycv) <- c("meanf","rwf","naive")
+
 accuracycv
 arimaacc
 holtacc
