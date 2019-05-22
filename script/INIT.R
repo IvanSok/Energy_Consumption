@@ -278,7 +278,9 @@ house070809week <- newDF %>% group_by(year,week) %>% summarise(Kitchen = sum(Kit
                                                                WH_AC = sum(WaterHeater_AirConditioner),
                                                                GAP = sum(Global_active_power))
 
-house070809day <- newDF %>% group_by(Date) %>% summarise(GAP = sum(Global_active_power))
+
+house070809day <- newDF %>% group_by(Date) %>% summarise(GAP_cost = sum(GAP_cost))
+
 
 names(house070809day)[1] <- "ds"
 names(house070809day)[2] <- "y"
@@ -353,7 +355,6 @@ plot(ts_GAP_HW070809forC, ylab= "Watt-Hours", xlab="Time - GAP", start(2010))
 absolute_error_HW <- sum(abs(random))/length(random)
 
 
-
 # AUTOARIMA:
 arimafit <- auto.arima(train_set)
 arimaforecast2009 <- forecast(arimafit,h = 53)
@@ -393,5 +394,16 @@ holtacc
 
 ###############################################################################
 # Price estimation --------------------------------------------------------
+# PROPHET:
+prophet <- prophet(house070809day, daily.seasonality = TRUE)
+future <- make_future_dataframe(prophet, periods = 365)
+forecast <- predict(prophet, future)
+plot(prophet, forecast, pch = 24, cex = 3)
+prophet_plot_components(prophet, forecast)
 
+prophet.cv <- cross_validation(prophet, initial = 730, period = 180, horizon = 365, units = 'days')
+head(prophet.cv)
+prophet.perf <- performance_metrics(prophet.cv)
+mean(prophet.perf$mape)
+prophet.perf
 
