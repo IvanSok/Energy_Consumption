@@ -235,7 +235,13 @@ newDF$excess_energy <- newDF$Global_active_power - newDF$Kitchen - newDF$Laundry
 #Pricing for peak and offpeak:
 newDF$price <- c(NA)
 
-newDF$price <- ifelse (between(newDF$hour,left = 2, right = 7) | between(newDF$hour, left = 14, right = 17), yes = 0.123, no = 0.158)
+newDF$price <- ifelse (between(newDF$hour,left = 2, right = 7) | between(newDF$hour, left = 14, right = 17),
+                       yes = 0.123, no = 0.158)
+
+newDF$GAP_cost <- newDF$Global_active_power * newDF$price
+newDF$Kitchen_cost <- newDF$Kitchen * newDF$price
+newDF$Laundry_cost <- newDF$Laundry * newDF$price
+newDF$WH_AC_cost <- newDF$WaterHeater_AirConditioner * newDF$price
 
 ###############################################################################
 # Removing/filling NAs ----------------------------------------------------
@@ -367,6 +373,7 @@ head(prophet.cv)
 prophet.perf <- performance_metrics(prophet.cv)
 mean(prophet.perf$mape)
 prophet.perf
+
 #CrossValidation for other models:
 crossvalidation <- c()
 vector <- c(meanf,rwf,naive)
@@ -381,5 +388,10 @@ accuracycv
 arimaacc
 holtacc
 
+
+
+
+###############################################################################
+# Price estimation --------------------------------------------------------
 
 
