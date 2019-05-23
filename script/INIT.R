@@ -77,7 +77,7 @@ newDF <- bind_rows(yr_2007, yr_2008, yr_2009)
 
 
 # # Filtering out 2010 data in newDF:
- newDF <-filter(newDF, year != 2010)
+ #newDF <-filter(newDF, year != 2010)
  
 
 Off_peak <- read_csv("NormalFares.csv")
@@ -249,13 +249,14 @@ newDF$WH_AC_cost <- newDF$WaterHeater_AirConditioner * newDF$price
 #Finding gaps in data and filling them with NA:
 newDF$DateTime <- as.POSIXct(newDF$DateTime, "%Y/%m/%d %H:%M:%S")
 attr(newDF$DateTime, "tzone") <- "Europe/Paris"
-newDF <- pad(newDF, break_above = 2)
 
 #Deleting X, X.1, Date, Time columns in dataframe:
 newDF$X.1 <- NULL
 newDF$X <- NULL
 newDF$Date <- NULL
 newDF$Time <- NULL
+
+newDF <- pad(newDF, break_above = 3)
 
 #Filling in id column:
 newDF$id <- c(1:nrow(newDF))
@@ -270,20 +271,36 @@ for (i in 3:ncol(newDF)) {
 ###############################################################################
 # Granularity -------------------------------------------------------------
 
+granularity <- c(month, week, day)
+
 newDF$Date <- date(newDF$DateTime)
 
+
+house070809month <- newDF %>% group_by(year,month) %>% summarise(Kitchen = sum(Kitchen),
+                                                               Laundry = sum(Laundry),
+                                                               WH_AC = sum(WaterHeater_AirConditioner),
+                                                               GAP = sum(Global_active_power))
+
+write.csv(house070809month, "house070809month.csv")
 
 house070809week <- newDF %>% group_by(year,week) %>% summarise(Kitchen = sum(Kitchen),
                                                                Laundry = sum(Laundry),
                                                                WH_AC = sum(WaterHeater_AirConditioner),
                                                                GAP = sum(Global_active_power))
+write.csv(house070809week, "house070809week.csv")
 
 
-house070809day <- newDF %>% group_by(Date) %>% summarise(GAP_cost = sum(GAP_cost))
+house070809day <- newDF %>% group_by(Date) %>% summarise(Kitchen = sum(Kitchen),
+                                                         Laundry = sum(Laundry),
+                                                         WH_AC = sum(WaterHeater_AirConditioner),
+                                                         GAP_cost = sum(GAP_cost))  #change to GAP for shiny
+write.csv(house070809day, "house070809day.csv")
 
 
+# renaming for Prophet:
 names(house070809day)[1] <- "ds"
 names(house070809day)[2] <- "y"
+
 house070809day$ds <- as.Date.character(house070809day$ds)
 
 ###############################################################################
@@ -326,41 +343,17 @@ test_set <- window(tsGAP_070809, start = 2009)
 ###############################################################################
 # MODELS: -----------------------------------------------------------
 
-#Holt-Winters:
-
-# Seasonal adjusting sub-meter 1 by subtracting the seasonal component & plot:
-tsGAP_070809Adjusted <- tsGAP_070809 - seasonal
-autoplot(tsGAP_070809Adjusted)
-
-# Train and test sets:
-train_tsGAP_070809Adjusted <- window(tsGAP_070809Adjusted, end = c(2008,53))
-test_tsGAP_070809Adjusted <- window(tsGAP_070809Adjusted, start = 2009)
-
-HWMODEL <- HoltWinters(train_tsGAP_070809Adjusted,beta = FALSE,gamma = FALSE)
-HW_forecast <- forecast(HWMODEL,h = 53)
-
-holtacc <- accuracy(HW_forecast,test_tsGAP_070809Adjusted)
-
-# HoltWinters forecast & plot:
-ts_GAP_HW070809for <- forecast(ts_GAP_HW070809, h = 25)
-plot(ts_GAP_HW070809for, ylab = "Watt-Hours", xlab = "Time - GAP")
-
-# Forecast HoltWinters with diminished confidence levels
-ts_GAP_HW070809forC <- forecast(ts_GAP_HW070809, h=25, level=c(10,25))
-
-## Plot only the forecasted area
-plot(ts_GAP_HW070809forC, ylab= "Watt-Hours", xlab="Time - GAP", start(2010))
-
-# Absolute error:
-absolute_error_HW <- sum(abs(random))/length(random)
 
 
 # AUTOARIMA:
-arimafit <- auto.arima(train_set)
+arimafit <- arima(train_set, order =  c(0,0,1),
+                  seasonal =  list(order = c(1,1,0), period = 52))
+                  
 arimaforecast2009 <- forecast(arimafit,h = 53)
 arimaacc <- accuracy(f = arimaforecast2009,test_set)
 plot(arimaforecast2009)
 
+auto.arima(tsGAP_070809)
 
 # PROPHET:
 prophet <- prophet(house070809day, daily.seasonality = TRUE)
@@ -395,7 +388,15 @@ holtacc
 ###############################################################################
 # Price estimation --------------------------------------------------------
 # PROPHET:
-prophet <- prophet(house070809day, daily.seasonality = TRUE)
+
+# Holidays:
+summer <- data_frame(holiday = "summer",
+                         ds = as.Date(c("2007-08-01","2008-08-01", "2009-08-01", "2010-08-01", "2011-08-01" )),
+                         lower_window = 0,
+                         upper_window = 31)
+
+
+prophet <- prophet(house070809day,holidays = summer, daily.seasonality = TRUE)
 future <- make_future_dataframe(prophet, periods = 365)
 forecast <- predict(prophet, future)
 plot(prophet, forecast, pch = 24, cex = 3)
