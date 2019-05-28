@@ -77,7 +77,7 @@ newDF <- bind_rows(yr_2007, yr_2008, yr_2009)
 
 
 # # Filtering out 2010 data in newDF:
- #newDF <-filter(newDF, year != 2010)
+newDF <-filter(newDF, year != 2010)
  
 
 Off_peak <- read_csv("NormalFares.csv")
@@ -279,21 +279,35 @@ newDF$Date <- date(newDF$DateTime)
 house070809month <- newDF %>% group_by(year,month) %>% summarise(Kitchen = sum(Kitchen),
                                                                Laundry = sum(Laundry),
                                                                WH_AC = sum(WaterHeater_AirConditioner),
-                                                               GAP = sum(Global_active_power))
+                                                               GAP = sum(Global_active_power),
+                                                               DateTime = Mode(DateTime)[1])
+house070809month$X1 <- c(NULL)
+house070809month$year <- c(NULL)
+house070809month$week <- c(NULL)
+house070809month$month <- c(NULL)
+house070809month$Date <- date(house070809month$DateTime)
 
 write.csv(house070809month, "house070809month.csv")
+
 
 house070809week <- newDF %>% group_by(year,week) %>% summarise(Kitchen = sum(Kitchen),
                                                                Laundry = sum(Laundry),
                                                                WH_AC = sum(WaterHeater_AirConditioner),
-                                                               GAP = sum(Global_active_power))
+                                                               GAP = sum(Global_active_power),
+                                                               DateTime = Mode(DateTime)[1])
+house070809week$X1 <- c(NULL)
+house070809week$year <- c(NULL)
+house070809week$week <- c(NULL)
+house070809week$Date <- date(house070809week$DateTime)
+
 write.csv(house070809week, "house070809week.csv")
 
 
 house070809day <- newDF %>% group_by(Date) %>% summarise(Kitchen = sum(Kitchen),
                                                          Laundry = sum(Laundry),
                                                          WH_AC = sum(WaterHeater_AirConditioner),
-                                                         GAP_cost = sum(GAP_cost))  #change to GAP for shiny
+                                                         GAP = sum(Global_active_power),
+                                                         DateTime = Mode(DateTime)[1])  #change to GAP for shiny
 write.csv(house070809day, "house070809day.csv")
 
 
@@ -359,6 +373,9 @@ auto.arima(tsGAP_070809)
 prophet <- prophet(house070809day, daily.seasonality = TRUE)
 future <- make_future_dataframe(prophet, periods = 365)
 forecast <- predict(prophet, future)
+
+write.csv(forecast, "Forecast.csv")
+
 plot(prophet, forecast, pch = 24, cex = 3)
 prophet_plot_components(prophet, forecast)
 
