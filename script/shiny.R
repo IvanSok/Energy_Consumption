@@ -13,16 +13,16 @@ setwd("..")
 rm(current_path)
 
 # Loading data
-data_bydays<-read.csv("./script/house070809day.csv")
+data_bydays<-read.csv("./datasets/house070809day.csv")
 data_bydays$Date <-  as.Date(data_bydays$Date)
 
-data_byweeks<-read.csv("./script/house070809week.csv")
+data_byweeks<-read.csv("./datasets/house070809week.csv")
 data_byweeks$Date <-  as.Date(data_byweeks$Date)
 
-data_bymonths<-read.csv("./script/house070809month.csv")
+data_bymonths<-read.csv("./datasets/house070809month.csv")
 data_bymonths$Date <-  as.Date(data_bymonths$Date)
 
-prophet_forecast <- read.csv("./script/Forecast.csv")
+prophet_forecast <- read.csv("./datasets/Forecast.csv")
 prophet_forecast$ds <- as.Date(prophet_forecast$ds)
 #rename(prophet_forecast, replace = c("ds" = "Date"))
 
