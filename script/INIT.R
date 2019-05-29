@@ -1,6 +1,6 @@
 # Libraries: --------------------------------------------------------------
 pacman::p_load(RMySQL, dplyr, lubridate, ggplot2, readr, plotly, ggfortify, forecast, padr, DescTools,
-               stats, xts, prophet)
+               stats, xts, prophet, purrr)
 ###############################################################################
 # Github setup ------------------------------------------------------------
 current_path <- getActiveDocumentContext()$path
@@ -270,158 +270,56 @@ for (i in 3:ncol(newDF)) {
 
 ###############################################################################
 # Granularity -------------------------------------------------------------
-
-granularity <- c(month, week, day)
-
 newDF$Date <- date(newDF$DateTime)
 
+newDF$DayYear <- floor_date(newDF$Date, unit = "day")
+newDF$MonthYear <- floor_date(newDF$Date, unit = "month")
+newDF$WeekYear <- floor_date(newDF$Date, unit = "week")
 
-house070809month <- newDF %>% group_by(year,month) %>% summarise(Kitchen = sum(Kitchen),
-                                                               Laundry = sum(Laundry),
-                                                               WH_AC = sum(WaterHeater_AirConditioner),
-                                                               GAP = sum(Global_active_power),
-                                                               DateTime = Mode(DateTime)[1])
-house070809month$X1 <- c(NULL)
-house070809month$year <- c(NULL)
-house070809month$week <- c(NULL)
-house070809month$month <- c(NULL)
-house070809month$Date <- date(house070809month$DateTime)
+group <- c('DayYear', 'WeekYear', 'MonthYear')
 
-write.csv(house070809month, "house070809month.csv")
+granularity <- c()
 
-
-house070809week <- newDF %>% group_by(year,week) %>% summarise(Kitchen = sum(Kitchen),
-                                                               Laundry = sum(Laundry),
-                                                               WH_AC = sum(WaterHeater_AirConditioner),
-                                                               GAP = sum(Global_active_power),
-                                                               DateTime = Mode(DateTime)[1])
-house070809week$X1 <- c(NULL)
-house070809week$year <- c(NULL)
-house070809week$week <- c(NULL)
-house070809week$Date <- date(house070809week$DateTime)
-
-write.csv(house070809week, "house070809week.csv")
-
-
-house070809day <- newDF %>% group_by(Date) %>% summarise(Kitchen = sum(Kitchen),
-                                                         Laundry = sum(Laundry),
-                                                         WH_AC = sum(WaterHeater_AirConditioner),
-                                                         GAP = sum(Global_active_power),
-                                                         DateTime = Mode(DateTime)[1])  #change to GAP for shiny
-write.csv(house070809day, "house070809day.csv")
-
-
-# renaming for Prophet:
-names(house070809day)[1] <- "ds"
-names(house070809day)[2] <- "y"
-
-house070809day$ds <- as.Date.character(house070809day$ds)
-
-###############################################################################
-# Creating Time series & decomposition: -----------------------------------
-
-# Data frame for calculations:
-
-ddd <- house070809week
-
-## Create TS object with Global active power:
-tsGAP_070809 <- ts(ddd$GAP, frequency = 53, start = c(2007,1))
-autoplot(tsGAP_070809, colour = "red", xlab = "Time", ylab = "Watt Hours",
-         main = "Global_Active_Power")
-
-fitGAP <- tslm(tsGAP_070809 ~trend + season)
-summary(fitGAP)
-
-forecastfitGAP <- forecast(fitGAP, h = 20)
-plot(forecastfitGAP)
-
-forecastfitGAP_c <- forecast(fitGAP, h = 20, level = c(80,90))
-plot(forecastfitGAP_c,ylab = "Watt-Hours", xlab = "Time")
-
-
-## Decomposing Time series:
-
-components070809_GAP <- stl(tsGAP_070809,s.window = 'periodic' )
-autoplot(components070809_GAP)
-
-seasonal <- components070809_GAP$time.series[,1]
-trend <- components070809_GAP$time.series[,2]
-random <- components070809_GAP$time.series[,3]
-
-plot(seasonal)
-###############################################################################
-# Splitting data ----------------------------------------------------------
-train_set <- window(tsGAP_070809, start = 2007, end = c(2008,53))
-test_set <- window(tsGAP_070809, start = 2009)
-
-###############################################################################
-# MODELS: -----------------------------------------------------------
-
-
-
-# AUTOARIMA:
-arimafit <- arima(train_set, order =  c(0,0,1),
-                  seasonal =  list(order = c(1,1,0), period = 52))
-                  
-arimaforecast2009 <- forecast(arimafit,h = 53)
-arimaacc <- accuracy(f = arimaforecast2009,test_set)
-plot(arimaforecast2009)
-
-auto.arima(tsGAP_070809)
-
-# PROPHET:
-prophet <- prophet(house070809day, daily.seasonality = TRUE)
-future <- make_future_dataframe(prophet, periods = 365)
-forecast <- predict(prophet, future)
-
-write.csv(forecast, "Forecast.csv")
-
-plot(prophet, forecast, pch = 24, cex = 3)
-prophet_plot_components(prophet, forecast)
-
-prophet.cv <- cross_validation(prophet, initial = 730, period = 180, horizon = 365, units = 'days')
-head(prophet.cv)
-prophet.perf <- performance_metrics(prophet.cv)
-mean(prophet.perf$mape)
-prophet.perf
-
-#CrossValidation for other models:
-crossvalidation <- c()
-vector <- c(meanf,rwf,naive)
-accuracycv <- NULL
-for (i in vector) {
-  crossvalidation <- tsCV(y = tsGAP_070809,h = 53,forecastfunction = i)
-  accuracycv <- rbind(accuracycv,accuracy(crossvalidation,tsGAP_070809))
+for (i in group){
+  granularity[[i]] <- newDF %>% group_by_at(i) %>% summarise(Kitchen = sum(Kitchen),
+                                                          Laundry = sum(Laundry),
+                                                          WH_AC = sum(WaterHeater_AirConditioner),
+                                                          GAP = sum(Global_active_power),
+                                                          DateTime = Mode(DateTime)[1])
+  granularity[[i]]$Date <- date(granularity[[i]]$DateTime)
+  
 }
-rownames(accuracycv) <- c("meanf","rwf","naive")
-
-accuracycv
-arimaacc
-holtacc
 
 
+#write.csv(house070809month, "house070809month.csv")
 
+#write.csv(house070809week, "house070809week.csv")
+
+#write.csv(house070809day, "house070809day.csv")
+
+names(granularity$DayYear)[1] <- "ds"
+names(granularity$DayYear)[5] <- "y"
+names(granularity$WeekYear)[1] <- "ds"
+names(granularity$WeekYear)[5] <- "y"
+names(granularity$MonthYear)[1] <- "ds"
+names(granularity$MonthYear)[5] <- "y"
 
 ###############################################################################
-# Price estimation --------------------------------------------------------
+# MODELS/Performance: -----------------------------------------------------------
+
 # PROPHET:
+m <- lapply(granularity, prophet)
+future <- lapply(m, function(x) make_future_dataframe(m = x, period = 365))
+forecast <- map2(m, future, predict)
 
-# Holidays:
-summer <- data_frame(holiday = "summer",
-                         ds = as.Date(c("2007-08-01","2008-08-01", "2009-08-01", "2010-08-01", "2011-08-01" )),
-                         lower_window = 0,
-                         upper_window = 31)
+plots <- map2(m, forecast, dyplot.prophet)
+plots$DayYear
+plots$WeekYear
+plots$MonthYear
 
-
-prophet <- prophet(house070809day,holidays = summer, daily.seasonality = TRUE)
-future <- make_future_dataframe(prophet, periods = 365)
-forecast <- predict(prophet, future)
-plot(prophet, forecast, pch = 24, cex = 3)
-prophet_plot_components(prophet, forecast)
-
-prophet.cv <- cross_validation(prophet, initial = 730, period = 180, horizon = 365, units = 'days')
+prophet.cv <- cross_validation(m$DayYear, initial = 730, period = 180, horizon = 365, units = 'days')
 head(prophet.cv)
 prophet.perf <- performance_metrics(prophet.cv)
 mean(prophet.perf$mape)
-prophet.perf
+
 
