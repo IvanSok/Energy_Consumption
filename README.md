@@ -10,7 +10,7 @@ Language used: R
 
 # Technical Approach
 
-1. Data Preprocessing:
+Data Preprocessing:
 
 SQL queries
 
