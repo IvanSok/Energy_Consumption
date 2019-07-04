@@ -12,33 +12,32 @@ Language used: R
 
 Data Preprocessing:
 
-SQL queries
+1. SQL queries
 
-Data types conversion and scaling
+2. Data types conversion and scaling
 
-Missing values treatment: calendar heat + pad + NA interpolation
+3. Missing values treatment: calendar heat + pad + NA interpolation
 
-Group_by to visualize different data granularities
+4. Group_by to visualize different data granularities
 
-Filter for descriptive analysis
+5. Filter for descriptive analysis
 
-Visualisation
+6. Visualisation
 
-Outliers treatment
+7. Outliers treatment
 
-2. Time-Series Creation and Decomposition
+Time-Series Creation and Decomposition
 
-3. Remainder Analysis & Visualisation
+Remainder Analysis & Visualisation
 
-4. Forecasting
+Forecasting
 
-Model Arima
-Model Holt Winters
-Model Hybrid Forecasting
+1. Model Arima
+2. Model Holt Winters
 
-5. Accuracy and Confidence Intervals
+Accuracy and Confidence Intervals
 
-6. Predictions
+Predictions
 
 # Usage:
 master.R (@script folder) script contains the full analysis with Global Active Power predictions for 1 year (optionally you can select your own future prediction time period)
